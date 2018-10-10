@@ -61,14 +61,16 @@ start_process (void *file_name_)
   bool success;
   /* file name parsing*/
   // 20121622 10/10
-  char command[strlen(file_name) + 1];
+  char filenameCopy[strlen(file_name) + 1];
+  char *command;
+  char *token;
   /* */
 
   // 20121622 10/10
   // void parse (char *source, char *destination)
-  parse(file_name, command);
-  printf("yes\n");
-  printf("\n\n\n%s\n\n\n", command);
+  
+  strlcpy(filenameCopy, file_name, strlen(file_name));
+  command = strtok_r(filenameCopy, " ", &token);
   /* */
 
   /* Initialize interrupt frame and load executable. */
@@ -81,7 +83,6 @@ start_process (void *file_name_)
   // 20121622 10/9
 
   if (success) {
-    // void stackArgumentPassing(char *filename, void **esp) 
     stackArgumentPassing(file_name, &if_.esp);
   }
   /* */
@@ -496,38 +497,25 @@ install_page (void *upage, void *kpage, bool writable)
 }
 
 /* Function */
-// 20121622 'echo x' 에서 echo만 destination으로 복사
-void parse (char *source, char *destination) {
-  int commandLength = 0;
-  int i;
 
-  for (i = 0; source[i] != ' ' && source[i] != '\0'; ++i);
-  commandLength = i + 1;
-  strlcpy(destination, source, commandLength);
-}
-/* */
 // 20121622
 void stackArgumentPassing(char *filename, void **esp) {
   char **argv;
-  char filenameCopy[8];
+  char filenameCopy[1024];
   char *token;
-  char *tmp;
   unsigned char argc = 0;
   int i = 0;
   int argvSize = 0;
   int wordLen = 0;
   int wordAlign = 0;
   
-  char buffer[1024];
-
-  
   printf("argument Passing start\n");
   /* argc 구하기*/
   strlcpy(filenameCopy, filename, strlen(filename) + 1);
-  tmp = strtok_r(filenameCopy, " ", &token);
+  strtok_r(filenameCopy, " ", &token);
   argc += 1;
 
-  while(tmp = strtok_r(NULL, " ", &token)) {
+  while(strtok_r(NULL, " ", &token)) {
     argc++;
   }
   /* */
@@ -539,43 +527,55 @@ void stackArgumentPassing(char *filename, void **esp) {
   argvSize += strlen(argv[0]) + 1;
   for (i = 1; i < argc; ++i) {
     argv[i] = strtok_r(NULL, " ", &token);
-    argvSize += strlen(argv[0]) + 1;
+    argvSize += strlen(argv[i]) + 1;
   }
   /* */
 
-  /* esp 위에 올리기 argv data + word-align*/
+  /* esp 위에 올리기 */
+  /* argv data */
   for (i = argc - 1; i >= 0; --i) {
     wordLen = strlen(argv[i]) + 1;
     *esp -= wordLen;
     memcpy(*esp, argv[i], wordLen + 1);
+    argv[i] = *esp;
   }
+  /* */
+
+  /* word-align*/
   wordAlign = (4 - (argvSize % 4)) % 4;
   *esp -= wordAlign;
   memset(*esp, 0, wordAlign * sizeof(uint8_t));
   /* */
 
-  /* NULL + argv address */
+  /* NULL */
   *esp -= CHAR_POINTER_SIZE; 
   memset(*esp, 0, CHAR_POINTER_SIZE);
+  /* */
 
+  /* argv address*/
   for (i = argc - 1; i >= 0; --i) {
     *esp -= CHAR_POINTER_SIZE;
     memcpy(*esp, &argv[i], CHAR_POINTER_SIZE);
   }
   /* */
   
-  /* argv + argc + return address*/
+  /* char ** argv */
   *esp -= CHAR_DOUBLE_POINTER_SIZE;
-  memcpy(*esp, argv, CHAR_DOUBLE_POINTER_SIZE);
+  **(uint32_t **)esp = *esp + 4;
+  /* */
 
+  /* argc */
   *esp -= INT_SIZE;
-  memcpy(*esp, &argc, INT_SIZE);
+  memset(*esp, 0, INT_SIZE);
+  memset(*esp, 2, INT_SIZE / 4);
+  /* */
 
+  /* return address */
   *esp -= VOID_POINTER_SIZE;
   memset(*esp, 0, VOID_POINTER_SIZE);
   /* */
-  
   hex_dump(*esp, *esp, 100, true);
   free(argv);
 }
 /* */
+
