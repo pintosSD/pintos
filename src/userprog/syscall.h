@@ -6,7 +6,8 @@ void syscall_init (void);
 
 /* 20121622 10/14*/
 #define USER_PROG_ERROR -1
-void checkVaddr(const void *vaddr);
+#define VOID_POINTER_SIZE sizeof(void *)
+void checkVaddr(const void *vaddr, int argc);
 
 void halt (void);
 void exit (int status);

@@ -25,20 +25,22 @@ syscall_handler (struct intr_frame *f)
   //printf("\nsystem call number : %d\n", *(uint32_t *)f->esp);
   systemCallNumber = *(uint32_t *)f->esp;
   ESP = (uint32_t *)f->esp;
-  //hex_dump((int)ESP, ESP, 100, true);
+ // hex_dump((int)ESP, ESP, 100, true);
   
   switch(systemCallNumber) {
     case SYS_HALT:
       halt();
       break;
     case SYS_EXIT:
-      checkVaddr(f->esp + 4);
+      checkVaddr(f->esp, 1);
       exit((int)*(uint32_t*)(f->esp + 4));
       break;
     case SYS_EXEC:
+      checkVaddr(f->esp, 1);
+      exec((int)*(uint32_t*)(f->esp + 4));
       break;
     case SYS_WAIT:
-      checkVaddr(f->esp + 4);
+      checkVaddr(f->esp, 1);
       wait((int)*(uint32_t *)(f->esp + 4));
       break;
     case SYS_CREATE:
@@ -50,9 +52,11 @@ syscall_handler (struct intr_frame *f)
     case SYS_FILESIZE:
       break;
     case SYS_READ:
+      checkVaddr(f->esp, 3);
+      read((int)*(uint32_t *)(f->esp + 4), (void *)*(uint32_t *)(f->esp + 8), (unsigned)*(uint32_t *)(f->esp + 12));
       break;
     case SYS_WRITE:
-      checkVaddr(f->esp + 4);
+      checkVaddr(f->esp, 3);
       write((int)*(uint32_t *)(f->esp + 4), (const void *)*(uint32_t *)(f->esp + 8), (unsigned)*(uint32_t *)(f->esp + 12));
       break;
     case SYS_SEEK:
@@ -65,8 +69,12 @@ syscall_handler (struct intr_frame *f)
   //thread_exit ();
 }
 
-void checkVaddr(const void *vaddr) {
-  if (!is_user_vaddr(vaddr))  exit(-1) ; 
+void checkVaddr(const void *vaddr, int argc) {
+  int count = argc;
+  
+  while (count--) {
+    if (is_kernel_vaddr(vaddr + (argc - count + 1) * VOID_POINTER_SIZE)) exit(-1);
+  }
 }
 
 void halt (void) {
@@ -78,16 +86,19 @@ void exit (int status) {
   thread_exit ();
 }
 pid_t exec (const char *cmd_line) {
-  
+ return process_execute(cmd_line); 
 }
 int wait (pid_t pid) {
   return process_wait(pid);
 }
 int read (int fd, void *buffer, unsigned size) {
   int status = USER_PROG_ERROR;
+  int i = 0;
 
-  if (fd != 0) {
-    input_getc();
+  if (fd == 0) {
+    while (*((char *)buffer + i++) = input_getc() && i < size);
+    *(char *)buffer = '\0';
+    return i;
   }
 
 }

@@ -22,7 +22,6 @@
 //20121622 10/10
 #include "threads/synch.h"
 
-void parse (char *source, char *destination);
 void stackArgumentPassing(char *filename, void **esp);
 /**/
 
@@ -77,7 +76,6 @@ start_process (void *file_name_)
   /* */
 
   // 20121622 10/10
-  // void parse (char *source, char *destination)
   
   strlcpy(filenameCopy, file_name, strlen(file_name) + 1);
   command = strtok_r(filenameCopy, " ", &token);
@@ -131,7 +129,7 @@ process_wait (tid_t child_tid)
   struct thread *t;
   int exitStatus;
   int count = 100000;
-  //printf("process_wait : %s\n", thread_name());
+  printf("process_wait : %s\n", thread_name());
   /* while ((t = getThread(child_tid))->exitStatus != EXIT_DONE) {
     thread_yield();
     printf("child_tid : %d\n", child_tid);
@@ -141,15 +139,13 @@ process_wait (tid_t child_tid)
     exitStatus = t->exitStatus;
     thread_yield();
   }
-
-  /*for (t = getThread(child_tid); printf("check : %d\n", t->exitStatus),getThread(child_tid)->exitStatus != EXIT_DONE; t = getThread(child_tid), printf("++%d\n", t->exitStatus)) {
+  /*while (t->status != THREAD_DYING) {
     thread_yield();
-    printf("child_tid : %d exitStatus : %d\n", child_tid, t->exitStatus);
-    
+    printf("?");
   }*/
+  exitStatus = t->exitStatus;
 
-  //printf("!!!!child_tid : %d\n", child_tid);
-  //printf("=============exitstatus : %d\n", t->exitStatus);
+  printf("=============exitstatus : %d\n", t->exitStatus);
   /* */
   
   return exitStatus;
