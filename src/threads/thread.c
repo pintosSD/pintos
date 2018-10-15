@@ -184,6 +184,10 @@ thread_create (const char *name, int priority,
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
 
+  /* 10/14 20121622 */
+  list_push_back(&thread_current()->childList, &t->childElem);
+  /* */
+
   /* Prepare thread for first run by initializing its stack.
      Do this atomically so intermediate values for the 'stack' 
      member cannot be observed. */
@@ -470,6 +474,12 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
+
+  /* 10/14 20121622 */
+  list_init(&t->childList);
+  t->exitStatus = 0;
+  /* */
+
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -585,3 +595,26 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+
+/* 10/14 20121622 */
+struct thread *getThread (tid_t tid) {
+  struct list_elem *element = list_begin (&thread_current()->childList);
+  struct list_elem *lastElement = list_end (&thread_current()->childList);
+  struct thread *t;
+
+  barrier();
+  do {
+    barrier();
+    if ((t = list_entry(element, struct thread, childElem))->tid == tid) {
+      //printf("============find!!\n");
+      return t;
+    } else {
+      //printf("no\n");
+    }
+  } while ((element = list_next(element)) != lastElement);
+
+  return NULL;
+}
+
+/* */

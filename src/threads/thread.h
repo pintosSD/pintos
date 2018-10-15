@@ -96,6 +96,12 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+
+    /* 10/14 20121622 */
+    struct list childList;
+    struct list_elem childElem;
+    int exitStatus;
+    /* */
 #endif
 
     /* Owned by thread.c. */
@@ -137,5 +143,11 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+/* 10/14 20121622 */
+struct thread *getThread (tid_t tid);
+static bool is_thread (struct thread *t);
+/* */
+
 
 #endif /* threads/thread.h */

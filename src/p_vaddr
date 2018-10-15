@@ -1,0 +1,8 @@
+userprog/process.c:  if ((phdr->p_offset & PGMASK) != (phdr->p_vaddr & PGMASK)) 
+userprog/process.c:  if (phdr->p_offset > (Elf32_Off) file_length (file)) 
+userprog/process.c:  if (phdr->p_memsz < phdr->p_filesz) 
+userprog/process.c:  if (phdr->p_memsz == 0)
+userprog/process.c:  if (!is_user_vaddr ((void *) phdr->p_vaddr))
+userprog/process.c:  if (!is_user_vaddr ((void *) (phdr->p_vaddr + phdr->p_memsz)))
+userprog/process.c:  if (phdr->p_vaddr + phdr->p_memsz < phdr->p_vaddr)
+userprog/process.c:  if (phdr->p_vaddr < PGSIZE)

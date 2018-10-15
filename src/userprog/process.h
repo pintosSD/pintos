@@ -16,5 +16,4 @@ void process_activate (void);
 #define CHAR_DOUBLE_POINTER_SIZE sizeof(char **)
 #define INT_SIZE sizeof(int)
 #define VOID_POINTER_SIZE sizeof(void *)
-
-
+#define EXIT_DONE 1
