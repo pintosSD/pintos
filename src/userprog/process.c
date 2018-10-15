@@ -128,24 +128,19 @@ process_wait (tid_t child_tid)
   // busy waiting 구현 완료  but return 문제가 있다  
   struct thread *t;
   int exitStatus;
-  int count = 100000;
-  printf("process_wait : %s\n", thread_name());
-  /* while ((t = getThread(child_tid))->exitStatus != EXIT_DONE) {
-    thread_yield();
-    printf("child_tid : %d\n", child_tid);
-  }*/
+  
   t = getThread(child_tid);
-  while (count--) {
+  while (1) {
+    barrier();
     exitStatus = t->exitStatus;
+    if (t->refExit != 0) {
+      list_remove(&t->childElem);
+      t->readyToDie = 1;
+      break;
+    }
     thread_yield();
   }
-  /*while (t->status != THREAD_DYING) {
-    thread_yield();
-    printf("?");
-  }*/
-  exitStatus = t->exitStatus;
 
-  printf("=============exitstatus : %d\n", t->exitStatus);
   /* */
   
   return exitStatus;
@@ -175,6 +170,17 @@ process_exit (void)
     pagedir_activate (NULL);
     pagedir_destroy (pd);
   }
+  /* 10/15 20121622 */
+
+  cur->refExit = 1;
+  while (1) {
+    barrier();
+    if (cur->readyToDie != 0 || cur->tid == 1) {
+      break;
+    }
+    thread_yield();
+  }
+  /* */
 }
 
 /* Sets up the CPU for running user code in the current

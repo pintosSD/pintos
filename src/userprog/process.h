@@ -11,9 +11,7 @@ void process_activate (void);
 #endif /* userprog/process.h */
 
 // 20121622
-#define SPLIT_SIZE 128
 #define CHAR_POINTER_SIZE sizeof(char *)
 #define CHAR_DOUBLE_POINTER_SIZE sizeof(char **)
 #define INT_SIZE sizeof(int)
 #define VOID_POINTER_SIZE sizeof(void *)
-#define EXIT_DONE 1

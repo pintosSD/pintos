@@ -186,6 +186,8 @@ thread_create (const char *name, int priority,
 
   /* 10/14 20121622 */
   list_push_back(&thread_current()->childList, &t->childElem);
+  t->refExit = 0;
+  t->readyToDie = 0;
   /* */
 
   /* Prepare thread for first run by initializing its stack.
@@ -603,14 +605,10 @@ struct thread *getThread (tid_t tid) {
   struct list_elem *lastElement = list_end (&thread_current()->childList);
   struct thread *t;
 
-  barrier();
   do {
     barrier();
     if ((t = list_entry(element, struct thread, childElem))->tid == tid) {
-      //printf("============find!!\n");
       return t;
-    } else {
-      //printf("no\n");
     }
   } while ((element = list_next(element)) != lastElement);
 

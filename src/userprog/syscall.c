@@ -25,7 +25,8 @@ syscall_handler (struct intr_frame *f)
   //printf("\nsystem call number : %d\n", *(uint32_t *)f->esp);
   systemCallNumber = *(uint32_t *)f->esp;
   ESP = (uint32_t *)f->esp;
- // hex_dump((int)ESP, ESP, 100, true);
+  //printf("[%d] %x\n",systemCallNumber, ESP);
+  //hex_dump((int)ESP, ESP, 100, true);
   
   switch(systemCallNumber) {
     case SYS_HALT:
@@ -37,7 +38,9 @@ syscall_handler (struct intr_frame *f)
       break;
     case SYS_EXEC:
       checkVaddr(f->esp, 1);
-      exec((int)*(uint32_t*)(f->esp + 4));
+      f->eax = exec(pagedir_get_page(thread_current()->pagedir,((int)*(uint32_t*)(f->esp+4))));
+      //f->eax = exec((int)*(uint32_t*)(f->esp + 4));
+      
       break;
     case SYS_WAIT:
       checkVaddr(f->esp, 1);
@@ -73,7 +76,9 @@ void checkVaddr(const void *vaddr, int argc) {
   int count = argc;
   
   while (count--) {
-    if (is_kernel_vaddr(vaddr + (argc - count + 1) * VOID_POINTER_SIZE)) exit(-1);
+    if (is_kernel_vaddr(vaddr + (argc - count + 1) * VOID_POINTER_SIZE)) {
+      exit(-1);
+    }
   }
 }
 

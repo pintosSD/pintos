@@ -101,6 +101,12 @@ struct thread
     struct list childList;
     struct list_elem childElem;
     int exitStatus;
+    
+    /* 10/15 20121622 */
+    // exit status for parent
+    int refExit;
+    // before die
+    int readyToDie;
     /* */
 #endif
 
@@ -146,7 +152,6 @@ int thread_get_load_avg (void);
 
 /* 10/14 20121622 */
 struct thread *getThread (tid_t tid);
-static bool is_thread (struct thread *t);
 /* */
 
 
