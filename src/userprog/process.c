@@ -53,6 +53,10 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  /* 10/15 20121622 */
+  if (filesys_open(cmd) == NULL) return -1;
+  /* */
+
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (cmd, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
@@ -129,13 +133,14 @@ process_wait (tid_t child_tid)
   struct thread *t;
   int exitStatus;
   
-  t = getThread(child_tid);
+  if ((t = getThread(child_tid)) == NULL) return -1;
+  
   while (1) {
     barrier();
     exitStatus = t->exitStatus;
-    if (t->refExit != 0) {
+    if (t->refStatus == THREAD_WORK_DONE) {
+      t->refStatus = THREAD_READY_TO_DIE;
       list_remove(&t->childElem);
-      t->readyToDie = 1;
       break;
     }
     thread_yield();
@@ -172,10 +177,10 @@ process_exit (void)
   }
   /* 10/15 20121622 */
 
-  cur->refExit = 1;
+  cur->refStatus = THREAD_WORK_DONE;
   while (1) {
     barrier();
-    if (cur->readyToDie != 0 || cur->tid == 1) {
+    if (cur->refStatus == THREAD_READY_TO_DIE || cur->tid == 1) {
       break;
     }
     thread_yield();

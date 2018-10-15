@@ -14,6 +14,14 @@ enum thread_status
     THREAD_DYING        /* About to be destroyed. */
   };
 
+/* 10/15 20121622 */
+enum threadReferenceStatus {
+  THREAD_INIT,              /* Initiating thread*/
+  THREAD_REFERENCING,       /* Referenced by parent */
+  THREAD_WORK_DONE,         /* Work done */ 
+  THREAD_READY_TO_DIE       /* Thread ready to die */
+};
+/* */
 /* Thread identifier type.
    You can redefine this to whatever type you like. */
 typedef int tid_t;
@@ -104,9 +112,7 @@ struct thread
     
     /* 10/15 20121622 */
     // exit status for parent
-    int refExit;
-    // before die
-    int readyToDie;
+    enum threadReferenceStatus refStatus;
     /* */
 #endif
 

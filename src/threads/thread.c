@@ -186,8 +186,9 @@ thread_create (const char *name, int priority,
 
   /* 10/14 20121622 */
   list_push_back(&thread_current()->childList, &t->childElem);
-  t->refExit = 0;
-  t->readyToDie = 0;
+  /* 10/15 20121622*/
+  // update refStatus
+  t->refStatus = THREAD_INIT;
   /* */
 
   /* Prepare thread for first run by initializing its stack.
@@ -601,17 +602,25 @@ uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
 /* 10/14 20121622 */
 struct thread *getThread (tid_t tid) {
+  if (list_empty(&thread_current()->childList)) goto fail;
+
   struct list_elem *element = list_begin (&thread_current()->childList);
   struct list_elem *lastElement = list_end (&thread_current()->childList);
   struct thread *t;
-
   do {
     barrier();
+
     if ((t = list_entry(element, struct thread, childElem))->tid == tid) {
-      return t;
+      if (t->refStatus == THREAD_INIT) {
+        t->refStatus = THREAD_REFERENCING;
+        return t;
+      } else {
+        break;
+      }
     }
   } while ((element = list_next(element)) != lastElement);
-
+  
+fail:
   return NULL;
 }
 
