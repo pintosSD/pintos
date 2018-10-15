@@ -607,7 +607,7 @@ void stackArgumentPassing(char *filename, void **esp) {
   *esp -= VOID_POINTER_SIZE;
   memset(*esp, 0, VOID_POINTER_SIZE);
   /* */
-  hex_dump(*esp, *esp, 100, true);
+//  hex_dump(*esp, *esp, 100, true);
   free(argv);
 }
 /* */
