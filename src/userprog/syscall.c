@@ -42,7 +42,7 @@ syscall_handler (struct intr_frame *f)
       break;
     case SYS_WAIT:
       checkVaddr(f->esp, 1);
-      f->eax = wait((int)*(uint32_t *)(f->esp + 4));
+      f->eax = wait((pid_t)*(uint32_t *)(f->esp + 4));
       break;
     case SYS_CREATE:
       break;
@@ -66,6 +66,16 @@ syscall_handler (struct intr_frame *f)
       break;
     case SYS_CLOSE:
       break;
+    case SYS_PIBONACCI:
+      checkVaddr(f->esp, 1);
+      f->eax = pibonacci((int)*(uint32_t *)(f->esp + 4));
+      break;
+    case SYS_SUM:
+      checkVaddr(f->esp, 4);
+      f->eax = sum((int)*(uint32_t *)(f->esp + 4), (int)*(uint32_t *)(f->esp + 8), (int)*(uint32_t *)(f->esp + 12), (int)*(uint32_t *)(f->esp + 16));
+      break;
+    default:
+      printf("SYSCALL ERROR\n");
   }
   //thread_exit ();
 }
@@ -113,4 +123,25 @@ int write(int fd, const void *buffer, unsigned size) {
     status = size;
   }
   return status;
+}
+
+int pibonacci (int n) {
+  int pNum = 1;
+  int ppNum = 0;
+  int ans = 0;
+  int i = 0;
+  if (n == 0) return 0;
+  else if (n == 1) return 1;
+  
+  for (i = 2; i <= n; ++i) {
+    ans = pNum + ppNum;
+    ppNum = pNum;
+    pNum = ans;
+  }
+  
+  return ans;
+}
+
+int sum (int a, int b, int c, int d) {
+  return a + b + c + d;
 }
