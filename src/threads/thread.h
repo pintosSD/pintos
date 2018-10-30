@@ -14,6 +14,14 @@ enum thread_status
     THREAD_DYING        /* About to be destroyed. */
   };
 
+/* 10/15 20121622 */
+enum threadReferenceStatus {
+  THREAD_INIT,              /* Initiating thread*/
+  THREAD_REFERENCING,       /* Referenced by parent */
+  THREAD_WORK_DONE,         /* Work done */ 
+  THREAD_READY_TO_DIE       /* Thread ready to die */
+};
+/* */
 /* Thread identifier type.
    You can redefine this to whatever type you like. */
 typedef int tid_t;
@@ -96,6 +104,16 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+
+    /* 10/14 20121622 */
+    struct list childList;
+    struct list_elem childElem;
+    int exitStatus;
+    
+    /* 10/15 20121622 */
+    // exit status for parent
+    enum threadReferenceStatus refStatus;
+    /* */
 #endif
 
     /* Owned by thread.c. */
@@ -137,5 +155,10 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+/* 10/14 20121622 */
+struct thread *getThread (tid_t tid);
+/* */
+
 
 #endif /* threads/thread.h */

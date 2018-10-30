@@ -34,6 +34,11 @@ void seek (int fd, unsigned position);
 unsigned tell (int fd);
 void close (int fd);
 
+/* 10/18 20121622 */
+int pibonacci (int n);
+int sum (int a, int b, int c, int d);
+/* */
+
 /* Project 3 and optionally project 4. */
 mapid_t mmap (int fd, void *addr);
 void munmap (mapid_t);

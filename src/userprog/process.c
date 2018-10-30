@@ -20,7 +20,8 @@
 
 /* Our Code */
 //20121622 10/10
-void parse (char *source, char *destination);
+#include "threads/synch.h"
+
 void stackArgumentPassing(char *filename, void **esp);
 /**/
 
@@ -36,6 +37,14 @@ process_execute (const char *file_name)
 {
   char *fn_copy;
   tid_t tid;
+  /* 10/15 20121622*/
+  char filenameCopy[strlen(file_name) + 1];
+  char *cmd;
+  char *token;
+
+  strlcpy(filenameCopy, file_name, strlen(file_name) + 1);
+  cmd = strtok_r(filenameCopy, " ", &token);
+  /* */
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -44,12 +53,17 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  /* 10/15 20121622 */
+  if (filesys_open(cmd) == NULL) return -1;
+  /* */
+
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (cmd, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
 }
+
 
 /* A thread function that loads a user process and starts it
    running. */
@@ -67,10 +81,10 @@ start_process (void *file_name_)
   /* */
 
   // 20121622 10/10
-  // void parse (char *source, char *destination)
   
-  strlcpy(filenameCopy, file_name, strlen(file_name));
+  strlcpy(filenameCopy, file_name, strlen(file_name) + 1);
   command = strtok_r(filenameCopy, " ", &token);
+  
   /* */
 
   /* Initialize interrupt frame and load executable. */
@@ -116,11 +130,26 @@ process_wait (tid_t child_tid)
 {
   // 20121622
   // 10/10 부모 프로세스가 자식 프로세가 종료될때까지 안기다린다고 한다.
-  uint32_t i;
-  for(i = 0; i < 5000000000; ++i);
-  /* */
+  // busy waiting 구현 완료  but return 문제가 있다  
+  struct thread *t;
+  int exitStatus;
+  
+  if ((t = getThread(child_tid)) == NULL) return -1;
+  
+  while (1) {
+    barrier();
+    exitStatus = t->exitStatus;
+    if (t->refStatus == THREAD_WORK_DONE) {
+      t->refStatus = THREAD_READY_TO_DIE;
+      list_remove(&t->childElem);
+      break;
+    }
+    thread_yield();
+  }
 
-  return -1;
+  /* */
+  
+  return exitStatus;
 }
 
 /* Free the current process's resources. */
@@ -132,6 +161,7 @@ process_exit (void)
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
+
   pd = cur->pagedir;
   if (pd != NULL) 
   {
@@ -146,6 +176,17 @@ process_exit (void)
     pagedir_activate (NULL);
     pagedir_destroy (pd);
   }
+  /* 10/15 20121622 */
+
+  cur->refStatus = THREAD_WORK_DONE;
+  while (1) {
+    barrier();
+    if (cur->refStatus == THREAD_READY_TO_DIE || cur->tid == 1) {
+      break;
+    }
+    thread_yield();
+  }
+  /* */
 }
 
 /* Sets up the CPU for running user code in the current
@@ -509,12 +550,12 @@ void stackArgumentPassing(char *filename, void **esp) {
   int wordLen = 0;
   int wordAlign = 0;
   
-  printf("argument Passing start\n");
+  //printf("argument Passing start\n");
   /* argc 구하기*/
   strlcpy(filenameCopy, filename, strlen(filename) + 1);
   strtok_r(filenameCopy, " ", &token);
   argc += 1;
-
+  
   while(strtok_r(NULL, " ", &token)) {
     argc++;
   }
@@ -536,7 +577,7 @@ void stackArgumentPassing(char *filename, void **esp) {
   for (i = argc - 1; i >= 0; --i) {
     wordLen = strlen(argv[i]) + 1;
     *esp -= wordLen;
-    memcpy(*esp, argv[i], wordLen + 1);
+    memcpy(*esp, argv[i], wordLen);
     argv[i] = *esp;
   }
   /* */
@@ -567,14 +608,14 @@ void stackArgumentPassing(char *filename, void **esp) {
   /* argc */
   *esp -= INT_SIZE;
   memset(*esp, 0, INT_SIZE);
-  memset(*esp, 2, INT_SIZE / 4);
+  memset(*esp, argc, INT_SIZE / 4);
   /* */
 
   /* return address */
   *esp -= VOID_POINTER_SIZE;
   memset(*esp, 0, VOID_POINTER_SIZE);
   /* */
-  hex_dump(*esp, *esp, 100, true);
+//  hex_dump(*esp, *esp, 100, true);
   free(argv);
 }
 /* */
