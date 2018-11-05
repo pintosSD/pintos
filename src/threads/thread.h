@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "threads/synch.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -114,6 +115,9 @@ struct thread
     // exit status for parent
     enum threadReferenceStatus refStatus;
     /* */
+    /* 11/06 20121622 */
+    struct semaphore readyToDie;
+    struct semaphore workDone;
 #endif
 
     /* Owned by thread.c. */

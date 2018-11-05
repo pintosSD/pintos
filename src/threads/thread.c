@@ -189,6 +189,8 @@ thread_create (const char *name, int priority,
   /* 10/15 20121622*/
   // update refStatus
   t->refStatus = THREAD_INIT;
+  sema_init(&(t->readyToDie), 0);
+  sema_init(&(t->workDone), 0);
   /* */
 
   /* Prepare thread for first run by initializing its stack.
@@ -611,12 +613,7 @@ struct thread *getThread (tid_t tid) {
     barrier();
 
     if ((t = list_entry(element, struct thread, childElem))->tid == tid) {
-      if (t->refStatus == THREAD_INIT) {
-        t->refStatus = THREAD_REFERENCING;
         return t;
-      } else {
-        break;
-      }
     }
   } while ((element = list_next(element)) != lastElement);
   

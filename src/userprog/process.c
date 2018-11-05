@@ -138,10 +138,18 @@ process_wait (tid_t child_tid)
   // 20121622
   // 10/10 부모 프로세스가 자식 프로세가 종료될때까지 안기다린다고 한다.
   struct thread *t;
-  int exitStatus;
+  int exitStatus = -1;
   
-  if ((t = getThread(child_tid)) == NULL) return -1;
-  
+  if ((t = getThread(child_tid)) == NULL) {
+  }
+  else {
+    sema_down(&(t->workDone));
+    exitStatus = t->exitStatus;
+    list_remove(&t->childElem);
+    sema_up(&(t->readyToDie));
+  }
+
+/*
   while (1) {
     barrier();
     exitStatus = t->exitStatus;
@@ -153,7 +161,7 @@ process_wait (tid_t child_tid)
     thread_yield();
   }
 
-  /* */
+  */
   
   return exitStatus;
 }
@@ -182,8 +190,11 @@ process_exit (void)
     pagedir_activate (NULL);
     pagedir_destroy (pd);
   }
-  /* 10/15 20121622 */
+  /* 11/06 20121622 */
+  sema_up(&(cur->workDone));
+  sema_down(&(cur->readyToDie));
 
+  /* 10/15 20121622 
   cur->refStatus = THREAD_WORK_DONE;
   while (1) {
     barrier();
@@ -192,7 +203,7 @@ process_exit (void)
     }
     thread_yield();
   }
-  /* */
+  */
 }
 
 /* Sets up the CPU for running user code in the current
