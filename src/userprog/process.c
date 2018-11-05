@@ -92,19 +92,26 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (command, &if_.eip, &if_.esp);
+
+  if (success = load (command, &if_.eip, &if_.esp)) {
+    stackArgumentPassing(file_name, &if_.esp);
+  }
+  
+  //success = load (command, &if_.eip, &if_.esp);
   /* Parameter passing to stack */
   // 20121622 10/9
-
+  /*
   if (success) {
     stackArgumentPassing(file_name, &if_.esp);
   }
-  /* */
-
+  */
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
+  
+
+
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -130,7 +137,6 @@ process_wait (tid_t child_tid)
 {
   // 20121622
   // 10/10 부모 프로세스가 자식 프로세가 종료될때까지 안기다린다고 한다.
-  // busy waiting 구현 완료  but return 문제가 있다  
   struct thread *t;
   int exitStatus;
   

@@ -105,7 +105,6 @@ int wait (pid_t pid) {
   return process_wait(pid);
 }
 int read (int fd, void *buffer, unsigned size) {
-  int status = USER_PROG_ERROR;
   int i = 0;
 
   if (fd == 0) {
