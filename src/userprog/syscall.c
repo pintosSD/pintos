@@ -45,12 +45,20 @@ syscall_handler (struct intr_frame *f)
       f->eax = wait((pid_t)*(uint32_t *)(f->esp + 4));
       break;
     case SYS_CREATE:
+      checkVaddr(f->esp, 2);
+      f->eax = create((const char *)*(uint32_t *)(f->esp + 4), (unsigned)*(uint32_t *)(f->esp + 8));
       break;
     case SYS_REMOVE:
+      checkVaddr(f->esp, 1);
+      f->eax = remove((const char *)*(uint32_t *)(f->esp + 4));
       break;
     case SYS_OPEN:
+      checkVaddr(f->esp, 1);
+      f->eax = open((const char *)*(uint32_t *)(f->esp + 4));
       break;
     case SYS_FILESIZE:
+      checkVaddr(f->esp, 1);
+      f->eax = filesize((int)*(uint32_t *)(f->esp + 4));
       break;
     case SYS_READ:
       checkVaddr(f->esp, 3);
@@ -61,10 +69,16 @@ syscall_handler (struct intr_frame *f)
       f->eax = write((int)*(uint32_t *)(f->esp + 4), (const void *)*(uint32_t *)(f->esp + 8), (unsigned)*(uint32_t *)(f->esp + 12));
       break;
     case SYS_SEEK:
+      checkVaddr(f->esp, 2);
+      seek((int)*(uint32_t *)(f->esp + 4), (unsigned)*(uint32_t *)(f->esp + 8));
       break;
     case SYS_TELL:
+      checkVaddr(f->esp, 1);
+      f->eax = tell((unsigned)*(uint32_t *)(f->esp + 4));
       break;
     case SYS_CLOSE:
+      checkVaddr(f->esp, 1);
+      close((int)*(uint32_t *)(f->esp + 4));
       break;
     case SYS_PIBONACCI:
       checkVaddr(f->esp, 1);
@@ -94,12 +108,18 @@ void halt (void) {
   shutdown_power_off();
 }
 void exit (int status) {
+  int i;
+  struct thread *t = thread_current();
+
   printf("%s: exit(%d)\n", thread_name(), status);
-  thread_current()->exitStatus = status;
+  t->exitStatus = status;
+  for (i = 3; i < 128; ++i) {
+    if (t->fd[i] != NULL) close(i);
+  }
   thread_exit ();
 }
 pid_t exec (const char *cmd_line) {
- return process_execute(cmd_line); 
+  return process_execute(cmd_line); 
 }
 int wait (pid_t pid) {
   return process_wait(pid);
@@ -107,11 +127,16 @@ int wait (pid_t pid) {
 int read (int fd, void *buffer, unsigned size) {
   int i = 0;
 
+  if (is_kernel_vaddr(buffer)) exit(-1);
+  
   if (fd == 0) {
     while (*((char *)buffer + i++) = input_getc() && i < size);
     *(char *)buffer = '\0';
+    
     return i;
   }
+  
+  return file_read(thread_current()->fd[fd], buffer, size);
 
 }
 int write(int fd, const void *buffer, unsigned size) {
@@ -121,7 +146,58 @@ int write(int fd, const void *buffer, unsigned size) {
     putbuf(buffer, size);
     status = size;
   }
+  else {
+    return file_write(thread_current()->fd[fd], buffer, size);  
+  }
   return status;
+}
+
+bool create (const char *file, unsigned initial_size) {
+  if (file == NULL) exit(-1);
+  return filesys_create(file, initial_size);
+}
+
+bool remove (const char *file) {
+  return filesys_remove(file);
+}
+
+int open (const char *file) {
+  //printf("===============================%s\n", file);
+  if (file == NULL) exit(-1);
+  struct file *fp = filesys_open(file);
+  struct thread *t = thread_current();
+  int i;
+
+  if (fp == NULL) goto fail;
+  else {
+    for (i = 3; i < 128; ++i) {
+      if (t->fd[i] == NULL) {
+        t->fd[i] = fp;
+        return i;
+      }
+    }
+  }
+fail:
+  return -1;
+}
+
+int filesize (int fd) {
+  return file_length(thread_current()->fd[fd]);
+}
+
+void seek (int fd, unsigned position) {
+  file_seek(thread_current()->fd[fd], position);
+}
+
+unsigned tell (int fd) {
+  return file_tell(thread_current()->fd[fd]);
+}
+
+void close (int fd) {
+  struct thread *t = thread_current();
+
+  file_close(t->fd[fd]);
+  t->fd[fd] = NULL;
 }
 
 int pibonacci (int n) {

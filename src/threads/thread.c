@@ -172,6 +172,8 @@ thread_create (const char *name, int priority,
   struct switch_threads_frame *sf;
   tid_t tid;
   enum intr_level old_level;
+  /* 11/06 20121622 */
+  int i;
 
   ASSERT (function != NULL);
 
@@ -188,7 +190,11 @@ thread_create (const char *name, int priority,
   list_push_back(&thread_current()->childList, &t->childElem);
   /* 10/15 20121622*/
   // update refStatus
-  t->refStatus = THREAD_INIT;
+  //t->refStatus = THREAD_INIT;
+  /* 11/06 20121622 */
+  for (i = 0; i < 128; ++i) {
+    t->fd[i] = NULL;
+  }
   sema_init(&(t->readyToDie), 0);
   sema_init(&(t->workDone), 0);
   /* */

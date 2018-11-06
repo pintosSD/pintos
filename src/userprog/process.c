@@ -21,6 +21,23 @@
 /* Our Code */
 //20121622 10/10
 #include "threads/synch.h"
+struct inode_disk
+{
+  block_sector_t start;               /* First data sector. */
+  off_t length;                       /* File size in bytes. */
+  unsigned magic;                     /* Magic number. */
+  uint32_t unused[125];               /* Not used. */
+};
+
+struct inode 
+{
+  struct list_elem elem;              /* Element in inode list. */
+  block_sector_t sector;              /* Sector number of disk location. */
+  int open_cnt;                       /* Number of openers. */
+  bool removed;                       /* True if deleted, false otherwise. */
+  int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
+  struct inode_disk data;             /* Inode content. */
+};
 
 void stackArgumentPassing(char *filename, void **esp);
 /**/
@@ -41,6 +58,7 @@ process_execute (const char *file_name)
   char filenameCopy[strlen(file_name) + 1];
   char *cmd;
   char *token;
+  struct file *f;
 
   strlcpy(filenameCopy, file_name, strlen(file_name) + 1);
   cmd = strtok_r(filenameCopy, " ", &token);
@@ -54,7 +72,8 @@ process_execute (const char *file_name)
   strlcpy (fn_copy, file_name, PGSIZE);
 
   /* 10/15 20121622 */
-  if (filesys_open(cmd) == NULL) return -1;
+  if ((f = filesys_open(cmd)) == NULL) return -1;
+  //file_deny_write(f);
   /* */
 
   /* Create a new thread to execute FILE_NAME. */
@@ -79,12 +98,12 @@ start_process (void *file_name_)
   char *command;
   char *token;
   /* */
-
+  int i;
   // 20121622 10/10
-  
+
   strlcpy(filenameCopy, file_name, strlen(file_name) + 1);
   command = strtok_r(filenameCopy, " ", &token);
-  
+
   /* */
 
   /* Initialize interrupt frame and load executable. */
@@ -96,20 +115,20 @@ start_process (void *file_name_)
   if (success = load (command, &if_.eip, &if_.esp)) {
     stackArgumentPassing(file_name, &if_.esp);
   }
-  
+
   //success = load (command, &if_.eip, &if_.esp);
   /* Parameter passing to stack */
   // 20121622 10/9
   /*
-  if (success) {
-    stackArgumentPassing(file_name, &if_.esp);
-  }
-  */
+     if (success) {
+     stackArgumentPassing(file_name, &if_.esp);
+     }
+   */
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
-  
+
 
 
 
@@ -139,7 +158,7 @@ process_wait (tid_t child_tid)
   // 10/10 부모 프로세스가 자식 프로세가 종료될때까지 안기다린다고 한다.
   struct thread *t;
   int exitStatus = -1;
-  
+
   if ((t = getThread(child_tid)) == NULL) {
   }
   else {
@@ -149,20 +168,20 @@ process_wait (tid_t child_tid)
     sema_up(&(t->readyToDie));
   }
 
-/*
-  while (1) {
-    barrier();
-    exitStatus = t->exitStatus;
-    if (t->refStatus == THREAD_WORK_DONE) {
-      t->refStatus = THREAD_READY_TO_DIE;
-      list_remove(&t->childElem);
-      break;
-    }
-    thread_yield();
-  }
+  /*
+     while (1) {
+     barrier();
+     exitStatus = t->exitStatus;
+     if (t->refStatus == THREAD_WORK_DONE) {
+     t->refStatus = THREAD_READY_TO_DIE;
+     list_remove(&t->childElem);
+     break;
+     }
+     thread_yield();
+     }
 
-  */
-  
+   */
+
   return exitStatus;
 }
 
@@ -193,17 +212,16 @@ process_exit (void)
   /* 11/06 20121622 */
   sema_up(&(cur->workDone));
   sema_down(&(cur->readyToDie));
-
   /* 10/15 20121622 
-  cur->refStatus = THREAD_WORK_DONE;
-  while (1) {
-    barrier();
-    if (cur->refStatus == THREAD_READY_TO_DIE || cur->tid == 1) {
-      break;
-    }
-    thread_yield();
-  }
-  */
+     cur->refStatus = THREAD_WORK_DONE;
+     while (1) {
+     barrier();
+     if (cur->refStatus == THREAD_READY_TO_DIE || cur->tid == 1) {
+     break;
+     }
+     thread_yield();
+     }
+   */
 }
 
 /* Sets up the CPU for running user code in the current
@@ -399,10 +417,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
   *eip = (void (*) (void)) ehdr.e_entry;
 
   success = true;
-
 done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
+  file_close(file);
   return success;
 }
 
@@ -566,13 +583,13 @@ void stackArgumentPassing(char *filename, void **esp) {
   int argvSize = 0;
   int wordLen = 0;
   int wordAlign = 0;
-  
+
   //printf("argument Passing start\n");
   /* argc 구하기*/
   strlcpy(filenameCopy, filename, strlen(filename) + 1);
   strtok_r(filenameCopy, " ", &token);
   argc += 1;
-  
+
   while(strtok_r(NULL, " ", &token)) {
     argc++;
   }
@@ -616,7 +633,7 @@ void stackArgumentPassing(char *filename, void **esp) {
     memcpy(*esp, &argv[i], CHAR_POINTER_SIZE);
   }
   /* */
-  
+
   /* char ** argv */
   *esp -= CHAR_DOUBLE_POINTER_SIZE;
   **(uint32_t **)esp = *esp + 4;
@@ -632,7 +649,7 @@ void stackArgumentPassing(char *filename, void **esp) {
   *esp -= VOID_POINTER_SIZE;
   memset(*esp, 0, VOID_POINTER_SIZE);
   /* */
-//  hex_dump(*esp, *esp, 100, true);
+  //  hex_dump(*esp, *esp, 100, true);
   free(argv);
 }
 /* */
