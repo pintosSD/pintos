@@ -73,11 +73,11 @@ process_execute (const char *file_name)
 
   /* 10/15 20121622 */
   if ((f = filesys_open(cmd)) == NULL) return -1;
-  //file_deny_write(f);
   /* */
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (cmd, PRI_DEFAULT, start_process, fn_copy);
+
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -210,6 +210,8 @@ process_exit (void)
     pagedir_destroy (pd);
   }
   /* 11/06 20121622 */
+  file_close(cur->fileOfExecuting);
+  
   sema_up(&(cur->workDone));
   sema_down(&(cur->readyToDie));
   /* 10/15 20121622 
@@ -417,9 +419,14 @@ load (const char *file_name, void (**eip) (void), void **esp)
   *eip = (void (*) (void)) ehdr.e_entry;
 
   success = true;
+
+  /* 11/06 20121622 */
+  t->fileOfExecuting = file;
+  file_deny_write(t->fileOfExecuting);
+
 done:
   /* We arrive here whether the load is successful or not. */
-  file_close(file);
+
   return success;
 }
 

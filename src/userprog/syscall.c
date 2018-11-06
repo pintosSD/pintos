@@ -126,7 +126,6 @@ int wait (pid_t pid) {
 }
 int read (int fd, void *buffer, unsigned size) {
   int i = 0;
-
   if (is_kernel_vaddr(buffer)) exit(-1);
   
   if (fd == 0) {

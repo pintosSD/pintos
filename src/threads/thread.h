@@ -129,6 +129,7 @@ struct thread
   struct semaphore readyToDie;
   struct semaphore workDone;
   struct file *fd[128];
+  struct file *fileOfExecuting;
 #endif
 
   /* Owned by thread.c. */
