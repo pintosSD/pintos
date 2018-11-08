@@ -128,6 +128,10 @@ struct thread
   /* 11/06 20121622 */
   struct semaphore readyToDie;
   struct semaphore workDone;
+  struct semaphore waitLoad;
+  struct semaphore childRemoved;
+  struct lock flowLock;
+  struct thread *parent;
   struct file *fd[128];
   struct file *fileOfExecuting;
 #endif

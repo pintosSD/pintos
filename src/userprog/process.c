@@ -21,6 +21,7 @@
 /* Our Code */
 //20121622 10/10
 #include "threads/synch.h"
+#define NO //
 struct inode_disk
 {
   block_sector_t start;               /* First data sector. */
@@ -38,6 +39,8 @@ struct inode
   int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
   struct inode_disk data;             /* Inode content. */
 };
+
+
 
 void stackArgumentPassing(char *filename, void **esp);
 /**/
@@ -59,7 +62,7 @@ process_execute (const char *file_name)
   char *cmd;
   char *token;
   struct file *f;
-
+  printf("=== process_executed\n");
   strlcpy(filenameCopy, file_name, strlen(file_name) + 1);
   cmd = strtok_r(filenameCopy, " ", &token);
   /* */
@@ -76,10 +79,56 @@ process_execute (const char *file_name)
   /* */
 
   /* Create a new thread to execute FILE_NAME. */
+  struct thread *cur = thread_current();
+  printf("name : %s tid : %d\n", cur->name, cur-tid);
+  printf("******before call thread_create\n");
+  if (cur->tid != 1)
+    lock_acquire(&cur->flowLock);
   tid = thread_create (cmd, PRI_DEFAULT, start_process, fn_copy);
+  if (cur->tid != 1)
+    lock_release(&cur->flowLock);
+  printf("******after call thread_create\n");
 
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
+  printf("thread current name : %s, tid : %d\n", cur->name, cur->tid);
+
+  struct list_elem *elem;
+  struct list childList = thread_current()->childList;
+
+  printf("end of childList : %s tid : %d\n", list_entry(list_rbegin(&childList), struct thread, childElem)->name, list_entry(list_rbegin(&childList), struct thread, childElem)->tid);
+  if (thread_current()->tid != 1) {
+    printf("**sema_down waitLoad\n");
+    sema_down(&(thread_current()->waitLoad));
+    printf("**sema_dwon waitLoad done\n");
+    printf("thread current name : %s, tid : %d\n", thread_current()->name, thread_current()->tid);
+    elem = list_begin(&childList);
+    printf("end of childList : %s tid : %d\n", list_entry(list_rbegin(&childList), struct thread, childElem)->name, list_entry(list_rbegin(&childList), struct thread, childElem)->tid);
+    /*while (elem != list_end(&childList) && elem != NULL) {
+      struct thread *trav = list_entry(elem, struct thread, childElem);
+
+      printf("trav name : %s, tid : %d\n", trav->name, trav->tid);
+      printf("trav's parent name : %s, tid : %d\n", trav->parent->name, trav->parent->tid);
+      if (trav->exitStatus == -1){
+      printf("=== process_execute and wait done\n");
+      return process_wait(tid);
+      }
+      if (trav->tid <= 0) break;
+      elem = list_next(elem);
+      }*/
+    for (elem; elem != list_end(&thread_current()->childList); elem = list_next(elem)) {
+      struct thread *trav = list_entry(elem, struct thread, childElem);
+
+      printf("trav name : %s, tid : %d\n", trav->name, trav->tid);
+      printf("trav's parent name : %s, tid : %d\n", trav->parent->name, trav->parent->tid);
+      if (trav->exitStatus == -1){
+        printf("=== process_execute and wait done\n");
+        return process_wait(tid);
+      }
+//      if (trav->tid <= 0) break;
+    }
+  }
+  printf("=== process_execute done\n");
   return tid;
 }
 
@@ -100,7 +149,7 @@ start_process (void *file_name_)
   /* */
   int i;
   // 20121622 10/10
-
+  printf("====== start process\n");
   strlcpy(filenameCopy, file_name, strlen(file_name) + 1);
   command = strtok_r(filenameCopy, " ", &token);
 
@@ -126,18 +175,23 @@ start_process (void *file_name_)
    */
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  if (!success) 
-    thread_exit ();
-
-
-
-
+  if (!success) {
+    //  printf("\n%s  ", thread_current()->name);
+    printf("load fail\n");
+    sema_up(&(thread_current()->parent->waitLoad));
+    exit(-1);
+  }
+  if (thread_current()->parent->tid != 1)
+    sema_up(&(thread_current()->parent->waitLoad));
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
      arguments on the stack in the form of a `struct intr_frame',
      we just point the stack pointer (%esp) to our stack frame
      and jump to it. */
+  printf("current thread name : %s, tid : %d\n", thread_current()->name, thread_current()->tid);
+  printf("size of parent childList : %d\n", list_size(&thread_current()->parent->childList));
+  printf("====== start process done\n");
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   NOT_REACHED ();
 }
@@ -158,7 +212,7 @@ process_wait (tid_t child_tid)
   // 10/10 부모 프로세스가 자식 프로세가 종료될때까지 안기다린다고 한다.
   struct thread *t;
   int exitStatus = -1;
-
+  printf("====process_wait \n");
   if ((t = getThread(child_tid)) == NULL) {
   }
   else {
@@ -166,6 +220,7 @@ process_wait (tid_t child_tid)
     exitStatus = t->exitStatus;
     list_remove(&t->childElem);
     sema_up(&(t->readyToDie));
+    //    sema_up(&(t->childRemoved));
   }
 
   /*
@@ -181,7 +236,8 @@ process_wait (tid_t child_tid)
      }
 
    */
-
+  //printf("in wait, exit status : %d\n", exitStatus);
+  printf("====process_wait done\n");
   return exitStatus;
 }
 
@@ -191,7 +247,7 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
-
+  printf("=====process_exit \n");
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
 
@@ -211,7 +267,11 @@ process_exit (void)
   }
   /* 11/06 20121622 */
   file_close(cur->fileOfExecuting);
-  
+  int i;
+  for (i = 0; i < 128; ++i) {
+    file_close(cur->fd[i]);
+  }
+  // printf("exit proecess name : %s\n", cur->name); 
   sema_up(&(cur->workDone));
   sema_down(&(cur->readyToDie));
   /* 10/15 20121622 
@@ -224,6 +284,7 @@ process_exit (void)
      thread_yield();
      }
    */
+  printf("===== process_exit done\n");
 }
 
 /* Sets up the CPU for running user code in the current

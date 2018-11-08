@@ -161,7 +161,7 @@ bool remove (const char *file) {
 }
 
 int open (const char *file) {
-  //printf("===============================%s\n", file);
+ // printf("===============================%s\n", file);
   if (file == NULL) exit(-1);
   struct file *fp = filesys_open(file);
   struct thread *t = thread_current();
