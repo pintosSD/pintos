@@ -146,7 +146,6 @@ start_process (void *file_name_)
 
   sema_up(&(thread_current()->parent->waitLoad));
   if (!success) {
-    thread_current()->loadFail = !success;
     list_push_back(&thread_current()->parent->loadFailList, &thread_current()->loadFailElem);
     exit(-1);
   }

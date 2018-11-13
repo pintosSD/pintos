@@ -25,7 +25,7 @@ syscall_handler (struct intr_frame *f)
   //printf("\nsystem call number : %d\n", *(uint32_t *)f->esp);
   systemCallNumber = *(uint32_t *)f->esp;
   ESP = (uint32_t *)f->esp;
-  //printf("[%d] %x\n",systemCallNumber, ESP);
+  //printf("[%d] %x\n", systemCallNumber, ESP);
   //hex_dump((int)ESP, ESP, 100, true);
   if (systemCallNumber == SYS_OPEN || systemCallNumber == SYS_READ || systemCallNumber == SYS_WRITE) {
     lock_acquire(&thread_current()->root->fileSync);
@@ -91,12 +91,12 @@ syscall_handler (struct intr_frame *f)
       f->eax = sum((int)*(uint32_t *)(f->esp + 4), (int)*(uint32_t *)(f->esp + 8), (int)*(uint32_t *)(f->esp + 12), (int)*(uint32_t *)(f->esp + 16));
       break;
     default:
-      printf("SYSCALL ERROR\n");
+      printf("SYSTEM CALL ERROR\n");
   }
-  if (systemCallNumber == SYS_OPEN || systemCallNumber == SYS_READ || systemCallNumber == SYS_WRITE) {
+   if (systemCallNumber == SYS_OPEN || systemCallNumber == SYS_READ || systemCallNumber == SYS_WRITE) {
     lock_release(&thread_current()->root->fileSync);
-  }
-
+  } 
+  
 }
 
 void checkVaddr(const void *vaddr, int argc) {

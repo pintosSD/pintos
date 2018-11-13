@@ -132,6 +132,12 @@ struct thread
   struct semaphore childRemoved;
   struct lock flowLock;
   struct thread *parent;
+  struct thread *root;
+
+  struct lock fileSync;
+  struct list loadFailList;
+  struct list_elem loadFailElem;
+
   struct file *fd[128];
   struct file *fileOfExecuting;
 #endif

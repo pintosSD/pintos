@@ -95,13 +95,9 @@ thread_init (void)
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
-  printf("+++++++++++++++++init thread_main\n");
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
-  printf("tid : %d\n", initial_thread->tid);
-  printf("size ; %d\n", list_size(&initial_thread->childList));
-  printf("whole size : %d\n", sizeof(initial_thread->childList));
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -180,16 +176,8 @@ thread_create (const char *name, int priority,
   int i;
 
   ASSERT (function != NULL);
-  printf("== thread_created \n");
   
-  if(thread_current()->tid == 1) {
-    printf("list_init\n");
-    if (list_empty(&thread_current()->childList)) {
-      printf("empty!!!\n");
-    }
-  }
   /* 10/14 20121622 */
-  printf("current thread name : %s tid : %d\n", thread_current()->name, thread_current()->tid);
   //printf("current childList thread size : %s\n", list_size(&thread_current()->childList));
   /* Allocate thread. */
   t = palloc_get_page (PAL_ZERO);
@@ -200,21 +188,11 @@ thread_create (const char *name, int priority,
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
   t->exitStatus = 0;
-  printf("--*--*-inited thread name : %s, tid : %d\n", t->name, t->tid);
  // list_init(&t->childList);
 
   /* 10/14 20121622 */
-  printf("current thread name : %s tid : %d\n", thread_current()->name, thread_current()->tid);
   //printf("current childList thread size : %s\n", list_size(&thread_current()->childList));
-  if (!list_empty(&thread_current()->childList))
-    printf("last of childList(current) : %s tid : %d\n", list_entry(list_rbegin(&thread_current()->childList), struct thread, childElem)->name, list_entry(list_rbegin(&thread_current()->childList), struct thread, childElem)->tid);
   list_push_back(&thread_current()->childList, &t->childElem);
-  if (!list_empty(&thread_current()->childList)) {
-    printf("thread is not empty!!\n");
-    printf("size : %d\n", list_size(&thread_current()->childList));
-  }
-  printf("===============push_back %s %d to %s %d\n", t->name, t->tid, thread_current()->name, thread_current()->tid);
-  printf("last of childList(current) : %s tid : %d\n", list_entry(list_rbegin(&thread_current()->childList), struct thread, childElem)->name, list_entry(list_rbegin(&thread_current()->childList), struct thread, childElem)->tid);
   /* 10/15 20121622*/
   // update refStatus
   //t->refStatus = THREAD_INIT;
@@ -223,12 +201,8 @@ thread_create (const char *name, int priority,
     t->fd[i] = NULL;
   }
   t->parent = thread_current();
+  t->root = list_entry(list_begin(&all_list), struct thread, allelem);
 //  printf("sema_init thread name : %s\n", t->name);
-  sema_init(&(t->readyToDie), 0);
-  sema_init(&(t->workDone), 0);
-  sema_init(&(t->waitLoad), 0);
-  sema_init(&(t->childRemoved), 0);
-  lock_init(&(t->flowLock));
   /* */
 
   /* Prepare thread for first run by initializing its stack.
@@ -255,25 +229,7 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */ 
   thread_unblock (t);
-  printf("created thread name : %s tid : %d\n", t->name, t->tid);
-  printf("check parent thread child list\n");
-  printf("parent name : %s, tid : %d\n", t->parent->name, t->parent->tid);
-  
-  struct list_elem *e = list_begin(&t->parent->childList);
 
-  printf("current thread name : %s tid : %d\n", thread_current()->name, thread_current()->tid);
-  printf("end of childList %s, tid : %d\n", list_entry(list_rbegin(&thread_current()->childList), struct thread, childElem)->name, list_entry(list_rbegin(&thread_current()->childList), struct thread, childElem)->tid);
-  for (e; e != list_end(&thread_current()->childList); e = list_next(e)) {
-    struct thread *trav = list_entry(e, struct thread, childElem);
-
-    printf("child of parent name : %s, tid : %d\n", trav->name, trav->tid);
-    if (list_next(e) == list_end(&thread_current()->childList)) {
-      printf("next list is end\n");
-      //break;
-    }
-  }
-  printf("end of childList %s, tid : %d\n", list_entry(list_rbegin(&t->parent->childList), struct thread, childElem)->name, list_entry(list_rbegin(&t->parent->childList), struct thread, childElem)->tid);
-  printf("== thread_created done\n");
   return tid;
 }
 
@@ -527,7 +483,6 @@ init_thread (struct thread *t, const char *name, int priority)
   ASSERT (t != NULL);
   ASSERT (PRI_MIN <= priority && priority <= PRI_MAX);
   ASSERT (name != NULL);
-  printf("=thread init\n");
 
   memset (t, 0, sizeof *t);
   t->status = THREAD_BLOCKED;
@@ -536,16 +491,19 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
-
+  if (!strcmp(t->name, "main")) lock_init(&t->fileSync);
   /* 10/14 20121622 */
   list_init(&t->childList);
-  printf("size : %d\n", list_size(&t->childList));
   t->childElem.prev = NULL;
   t->childElem.next = NULL;
   t->exitStatus = 0;
   /* */
-  printf("thread name : %s tid : %d\n", t->name, t->tid);
-  printf("=thread init done\n");
+  sema_init(&(t->readyToDie), 0);
+  sema_init(&(t->workDone), 0);
+  sema_init(&(t->waitLoad), 0);
+  sema_init(&(t->childRemoved), 0);
+  lock_init(&(t->flowLock));
+  list_init(&t->loadFailList);
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
