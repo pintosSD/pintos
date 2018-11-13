@@ -27,7 +27,9 @@ syscall_handler (struct intr_frame *f)
   ESP = (uint32_t *)f->esp;
   //printf("[%d] %x\n",systemCallNumber, ESP);
   //hex_dump((int)ESP, ESP, 100, true);
-  
+  if (systemCallNumber == SYS_OPEN || systemCallNumber == SYS_READ || systemCallNumber == SYS_WRITE) {
+    lock_acquire(&thread_current()->root->fileSync);
+  }
   switch(systemCallNumber) {
     case SYS_HALT:
       halt();
@@ -91,12 +93,15 @@ syscall_handler (struct intr_frame *f)
     default:
       printf("SYSCALL ERROR\n");
   }
-  //thread_exit ();
+  if (systemCallNumber == SYS_OPEN || systemCallNumber == SYS_READ || systemCallNumber == SYS_WRITE) {
+    lock_release(&thread_current()->root->fileSync);
+  }
+
 }
 
 void checkVaddr(const void *vaddr, int argc) {
   int count = argc;
-  
+
   while (count--) {
     if (is_kernel_vaddr(vaddr + (argc - count + 1) * VOID_POINTER_SIZE)) {
       exit(-1);
@@ -116,6 +121,7 @@ void exit (int status) {
   for (i = 3; i < 128; ++i) {
     if (t->fd[i] != NULL) close(i);
   }
+  if (thread_current()->root->fileSync.holder == thread_current()->root) lock_release(&thread_current()->root->fileSync);
   thread_exit ();
 }
 pid_t exec (const char *cmd_line) {
@@ -126,27 +132,28 @@ int wait (pid_t pid) {
 }
 int read (int fd, void *buffer, unsigned size) {
   int i = 0;
+  int returnValue;
   if (is_kernel_vaddr(buffer)) exit(-1);
-  
+
   if (fd == 0) {
     while (*((char *)buffer + i++) = input_getc() && i < size);
     *(char *)buffer = '\0';
-    
+
     return i;
   }
-  
-  return file_read(thread_current()->fd[fd], buffer, size);
-
+  else {
+    returnValue = file_read(thread_current()->fd[fd], buffer, size);
+  }
+  return returnValue;
 }
 int write(int fd, const void *buffer, unsigned size) {
   int status = USER_PROG_ERROR;
-
   if (fd == 1) {
     putbuf(buffer, size);
     status = size;
   }
   else {
-    return file_write(thread_current()->fd[fd], buffer, size);  
+    status = file_write(thread_current()->fd[fd], buffer, size);  
   }
   return status;
 }
@@ -161,7 +168,6 @@ bool remove (const char *file) {
 }
 
 int open (const char *file) {
- // printf("===============================%s\n", file);
   if (file == NULL) exit(-1);
   struct file *fp = filesys_open(file);
   struct thread *t = thread_current();
@@ -206,13 +212,13 @@ int pibonacci (int n) {
   int i = 0;
   if (n == 0) return 0;
   else if (n == 1) return 1;
-  
+
   for (i = 2; i <= n; ++i) {
     ans = pNum + ppNum;
     ppNum = pNum;
     pNum = ans;
   }
-  
+
   return ans;
 }
 
