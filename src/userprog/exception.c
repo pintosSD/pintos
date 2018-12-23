@@ -10,6 +10,9 @@
 #include "userprog/syscall.h"
 /* */
 
+//prj4
+#include "threads/palloc.h"
+
 /* Number of page faults processed. */
 static long long page_fault_cnt;
 
@@ -132,6 +135,8 @@ page_fault (struct intr_frame *f)
   bool user;         /* True: access by user, false: access by kernel. */
   void *fault_addr;  /* Fault address. */
 
+	int page_cnt = 0;
+
   /* Obtain faulting address, the virtual address that was
      accessed to cause the fault.  It may point to code or to
      data.  It is not necessarily the address of the instruction
@@ -155,16 +160,70 @@ page_fault (struct intr_frame *f)
   /* 10/15 20121622*/
 
   if (!user || is_kernel_vaddr(fault_addr) || fault_addr == NULL) exit(-1);
+
+
+ /* prj4  Page_fault handling */
+
+
+  /* Count page fault number */
+  if (write == false)page_cnt++;
+  if (user == false)page_cnt++;
+  if (not_present == false)page_cnt++;
+
+  /* Check is page fault */
+  if (page_cnt != 0 || fault_addr == NULL)
+	  exit(-1);
+
+  /* page fault handle */
+  if ( is_user_vaddr(fault_addr) )
+  {
+	  size_t page_num = (PHYS_BASE - pg_round_down(fault_addr)) / PGSIZE; 
+	  void *range_pnt;
+	  void *grow_ps = pg_round_down( fault_addr );
+	
+	  /* If page number over max number */
+	  if ( page_num > MAX_PAGE_NUM )
+		  exit(-1);
+
+	  for (range_pnt = PHYS_BASE - PGSIZE; 
+			  range_pnt >= pg_round_up(fault_addr); 
+			  range_pnt = range_pnt - PGSIZE)
+	  {
+		  if ( pagedir_get_page( thread_current()->pagedir, range_pnt ) == NULL )
+			  break; 
+		  --page_num;
+	  }
+      
+	  for (; page_num != 0; --page_num)
+	  {
+		  void *page_tmp = palloc_get_page(PAL_USER);
+		  if (page_tmp == NULL)
+			  exit(-1);
+		  else
+			  pagedir_set_page(thread_current()->pagedir, grow_ps, page_tmp, true);
+		  
+		  grow_ps +=  PGSIZE;
+	  }
+  }
+  else
+  {
+	  exit(-1);
+  }
+
+//prj4
+
   
   /* */
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
      which fault_addr refers. */
+/* disable prj2's page fault
   printf ("Page fault at %p: %s error %s page in %s context.\n",
           fault_addr,
           not_present ? "not present" : "rights violation",
           write ? "writing" : "reading",
           user ? "user" : "kernel");
   kill (f);
+*/
 }
 
