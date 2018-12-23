@@ -172,9 +172,13 @@ thread_create (const char *name, int priority,
   struct switch_threads_frame *sf;
   tid_t tid;
   enum intr_level old_level;
+  /* 11/06 20121622 */
+  int i;
 
   ASSERT (function != NULL);
-
+  
+  /* 10/14 20121622 */
+  //printf("current childList thread size : %s\n", list_size(&thread_current()->childList));
   /* Allocate thread. */
   t = palloc_get_page (PAL_ZERO);
   if (t == NULL)
@@ -183,12 +187,22 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+  t->exitStatus = 0;
+ // list_init(&t->childList);
 
   /* 10/14 20121622 */
+  //printf("current childList thread size : %s\n", list_size(&thread_current()->childList));
   list_push_back(&thread_current()->childList, &t->childElem);
   /* 10/15 20121622*/
   // update refStatus
-  t->refStatus = THREAD_INIT;
+  //t->refStatus = THREAD_INIT;
+  /* 11/06 20121622 */
+  for (i = 0; i < 128; ++i) {
+    t->fd[i] = NULL;
+  }
+  t->parent = thread_current();
+  t->root = list_entry(list_begin(&all_list), struct thread, allelem);
+//  printf("sema_init thread name : %s\n", t->name);
   /* */
 
   /* Prepare thread for first run by initializing its stack.
@@ -213,7 +227,7 @@ thread_create (const char *name, int priority,
 
   intr_set_level (old_level);
 
-  /* Add to run queue. */
+  /* Add to run queue. */ 
   thread_unblock (t);
 
   return tid;
@@ -477,12 +491,19 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
-
+  if (!strcmp(t->name, "main")) lock_init(&t->fileSync);
   /* 10/14 20121622 */
   list_init(&t->childList);
+  t->childElem.prev = NULL;
+  t->childElem.next = NULL;
   t->exitStatus = 0;
   /* */
-
+  sema_init(&(t->readyToDie), 0);
+  sema_init(&(t->workDone), 0);
+  sema_init(&(t->waitLoad), 0);
+  sema_init(&(t->childRemoved), 0);
+  lock_init(&(t->flowLock));
+  list_init(&t->loadFailList);
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -611,12 +632,7 @@ struct thread *getThread (tid_t tid) {
     barrier();
 
     if ((t = list_entry(element, struct thread, childElem))->tid == tid) {
-      if (t->refStatus == THREAD_INIT) {
-        t->refStatus = THREAD_REFERENCING;
         return t;
-      } else {
-        break;
-      }
     }
   } while ((element = list_next(element)) != lastElement);
   
